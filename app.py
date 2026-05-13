@@ -171,9 +171,7 @@ def generate_course_splits(distance, total_seconds, stroke, course_type, strateg
 st.set_page_config(page_title="Multi-Course Swim Splits Calculator", layout="wide")
 
 st.title("🏊‍♂️ REAL Swim Split Calculator")
-st.write("Are you tired of looking at the pace clock and wondering if you're actually on track? It’s time to change that. Pool physics matter—a dive start isn't the same as a push, and a flip turn isn't a hand finish. Understanding those differences is what separates athletes who simply train hard from athletes who train smart.
-
-You've already dedicated your lifestyle to this sport. Make your effort worth it by knowing your exact target velocities down to the hundredth of a second. No excuses, no garbage yardage, and zero guesswork. Elevate your swimming IQ and give your training purpose. Go get it done!")
+st.write("Are you tired of looking at the pace clock and wondering if you're actually on track? It’s time to change that. Pool physics matter—a dive start isn't the same as a push, and a flip turn isn't a hand finish. Understanding those differences is what separates athletes who simply train hard from athletes who train smart.You've already dedicated your lifestyle to this sport. Make your effort worth it by knowing your exact target velocities down to the hundredth of a second. No excuses, no garbage yardage, and zero guesswork. Elevate your swimming IQ and give your training purpose. Go get it done!")
 st.markdown("---")
 
 # User Input Controls Matrix
