@@ -180,8 +180,7 @@ st.set_page_config(page_title="Multi-Course Swim Splits Calculator", layout="wid
 st.title("The REAL Swim Split Calculator")
 
 # Customized user text addition
-st.write("""
-Stop guessing. Start knowing.
+st.write("Stop guessing. Start knowing.")
 st.markdown("---")
 
 # User Input Controls Matrix
