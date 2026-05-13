@@ -102,8 +102,8 @@ def format_time(secs):
 # --- STREAMLIT UI LAYOUT ---
 st.set_page_config(page_title="Swim Splits Analytics Calculator", layout="centered")
 
-st.title("🏊‍♂️ Elite Swim Splits & Velocity Calculator")
-st.write("A professional pacing card generator built on real pool physics (Dive & Finish corrections).")
+st.title("🏊‍♂️ REAL Swim Split Calculator")
+st.write("Stop wondering and start knowing what pace you need to swim to reach your goals in practice - whether from a dive or a push, with a foot touch or hand touch.")
 st.markdown("---")
 
 # User Inputs Block
