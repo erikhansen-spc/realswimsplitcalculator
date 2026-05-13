@@ -18,11 +18,22 @@ def parse_time(time_str):
 
 # --- CONVERSION ENGINE (SCY -> SCM / LCM) ---
 def convert_total_time(scy_seconds, stroke, target_course, distance):
-    scm_seconds = scy_seconds * 1.11
+    stroke = stroke.lower()
+    
+    # 1. FIX: Apply accurate Hy-Tek/NCAA distance mapping factors
+    if distance == 500:
+        scm_seconds = scy_seconds * 0.875      # 500yd to 400m
+    elif distance == 1000:
+        scm_seconds = scy_seconds * 0.875     # 1000yd to 800m
+    elif distance == 1650:
+        scm_seconds = scy_seconds * 1.006     # 1650yd to 1500m
+    else:
+        scm_seconds = scy_seconds * 1.11      # Standard 50, 100, 200, 400 sprint factor
+
     if target_course == "scm":
         return scm_seconds
         
-    stroke = stroke.lower()
+    # 2. LCM Turn Penalty logic (LCM cuts the number of walls in half)
     if stroke == "free":
         lcm_penalty = 0.8 if distance <= 200 else 1.2
     elif stroke == "back":
@@ -34,7 +45,12 @@ def convert_total_time(scy_seconds, stroke, target_course, distance):
     else:
         lcm_penalty = 1.3
         
-    num_50s = (distance / 50) if distance not in [500, 1000, 1650] else (400/50 if distance==500 else (800/50 if distance==1000 else 1500/50))
+    # Determine the number of 50m intervals in the target race to calculate missing walls
+    if distance == 500: num_50s = 400 / 50
+    elif distance == 1000: num_50s = 800 / 50
+    elif distance == 1650: num_50s = 1500 / 50
+    else: num_50s = distance / 50
+    
     return scm_seconds + (lcm_penalty * (num_50s / 2))
 
 # --- SPLIT MATH ENGINE WITH STRATEGY SHAPING ---
@@ -50,7 +66,6 @@ def generate_course_splits(distance, total_seconds, stroke, course_type, strateg
         dive_advantage = 3.0
         finish_advantage = 0.0
 
-    # Determine split intervals based on your coaching rules
     if course_type == "lcm":
         split_unit = 50
     else:
@@ -61,8 +76,6 @@ def generate_course_splits(distance, total_seconds, stroke, course_type, strateg
     # 1. 50-unit races broken down by 25s (SCY / SCM)
     if split_unit == 25 and distance == 50:
         base_25 = (total_seconds + dive_advantage + finish_advantage) / 2
-        
-        # Adjust 25 splits marginally if a strategy is chosen for a short sprint
         strat_shift = 0.0
         if strategy == "negative split": strat_shift = -0.2
         elif strategy == "controlled fade": strat_shift = 0.2
@@ -76,10 +89,9 @@ def generate_course_splits(distance, total_seconds, stroke, course_type, strateg
     # 2. 100-unit races broken down by 25s (SCY / SCM)
     elif split_unit == 25 and distance == 100:
         if stroke != "im":
-            # Apply tactical skew to the second 50 baseline
             strat_shift = 0.0
-            if strategy == "negative split": strat_shift = -0.5  # 2nd 50 is 1.0s faster total
-            elif strategy == "controlled fade": strat_shift = 0.6  # 2nd 50 is 1.2s slower total
+            if strategy == "negative split": strat_shift = -0.5
+            elif strategy == "controlled fade": strat_shift = 0.6
             
             base_50 = (total_seconds + dive_advantage + finish_advantage) / 2
             f50 = base_50 - dive_advantage - strat_shift
@@ -94,7 +106,7 @@ def generate_course_splits(distance, total_seconds, stroke, course_type, strateg
             splits_data.append({"Label": "50m [★]", "Split": t25_2, "Cum": f50, "Dist": 25})
             splits_data.append({"Label": "75m", "Split": t25_3, "Cum": f50 + t25_3, "Dist": 25})
             splits_data.append({"Label": "100m [★]", "Split": t25_4, "Cum": total_seconds, "Dist": 25})
-        else: # 100 IM
+        else:
             base_50 = (total_seconds + 3.0 + 0.5) / 2
             fly_back, breast_free = base_50 - 3.0, base_50 - 0.5
             t_fly = fly_back - 1.5
@@ -110,19 +122,15 @@ def generate_course_splits(distance, total_seconds, stroke, course_type, strateg
     else:
         if stroke != "im":
             cum_time = 0.0
-            
-            # Establish strategy slope increments per 50 interval
             slope = 0.0
             if strategy == "negative split":
-                slope = -0.25 if distance <= 200 else -0.15
+                slope = -0.25 if distance <= 200 else -0.05
             elif strategy == "controlled fade":
-                slope = 0.30 if distance <= 200 else 0.18
+                slope = 0.30 if distance <= 200 else 0.08
                 
-            # Base uncorrected 50 time
             base_50 = (total_seconds + dive_advantage + finish_advantage) / num_intervals
-            
-            # Create a progressive profile based on strategy slope
             mid_point = num_intervals / 2
+            
             for i in range(num_intervals):
                 curve_factor = (i + 0.5 - mid_point) * slope
                 split_50 = base_50 + curve_factor
@@ -142,7 +150,6 @@ def generate_course_splits(distance, total_seconds, stroke, course_type, strateg
                 s["Split"] *= error_adjustment
                 s["Cum"] *= error_adjustment
         else:
-            # IM Pacing Logic
             ratios = {"fly": 0.23, "back": 0.25, "breast": 0.28, "free": 0.24}
             cum_time = 0.0
             stroke_times = {s: total_seconds * r for s, r in ratios.items()}
@@ -157,7 +164,7 @@ def generate_course_splits(distance, total_seconds, stroke, course_type, strateg
                     label = f"50m {s.capitalize()[:3]}"
                     if s in ["back", "free"]: label += " [★]"
                     splits_data.append({"Label": label, "Split": split_50, "Cum": cum_time, "Dist": 50})
-                else: # 400
+                else:
                     half_stroke = stroke_times[s] / 2
                     s1, s2 = (half_stroke - 1.5, half_stroke + 1.5) if s in ["fly", "breast"] else ((half_stroke + 0.25, half_stroke - 0.25) if s == "free" else (half_stroke, half_stroke))
                     cum_time += s1
@@ -170,8 +177,16 @@ def generate_course_splits(distance, total_seconds, stroke, course_type, strateg
 # --- STREAMLIT USER INTERFACE ---
 st.set_page_config(page_title="Multi-Course Swim Splits Calculator", layout="wide")
 
-st.title("🏊‍♂️ The REAL Swim Split Calculator")
-st.write("Stop guessing. Start knowing.")
+st.title("🏊‍♂️ Erik's Swim Splits Analytics Engine")
+
+# Customized user text addition
+st.write("""
+Stop guessing your targets at practice and start knowing them. Every detail—dives versus pushes, 
+flip turns versus two-hand touches—directly impacts your real-world pacing. You are already investing 
+massive amounts of time and energy into this sport; why leave your breakthrough moments to guesswork? 
+
+No more garbage yardage. Equip yourself with the knowledge you need to improve and go get it done!
+""")
 st.markdown("---")
 
 # User Input Controls Matrix
@@ -183,7 +198,7 @@ with col2:
 with col3:
     strategy_choice = st.selectbox("Race Pacing Strategy", ["Constant Velocity", "Negative Split", "Controlled Fade"])
 with col4:
-    goal_time_input = st.text_input("Enter SCY Goal Time (MM:SS.hh or SS.hh)", "1:50.00")
+    goal_time_input = st.text_input("Enter SCY Goal Time (MM:SS.hh or SS.hh)", "5:01.50")
 
 scy_seconds = parse_time(goal_time_input)
 
@@ -228,17 +243,3 @@ else:
     with tab1:
         st.subheader(f"⏱️ 25 Yard Splits Chart ({scy_distance}yd) — {strategy_choice}")
         scy_splits = generate_course_splits(scy_distance, scy_seconds, stroke_choice, "scy", strategy_choice)
-        for s in scy_splits: s["Label"] = s["Label"].replace("m", "y")
-        st.table(build_ui_table(scy_splits))
-
-    with tab2:
-        st.subheader(f"⏱️ 25 Meter Splits Chart ({scm_lcm_distance}m) — {strategy_choice}")
-        scm_splits = generate_course_splits(scm_lcm_distance, scm_seconds, stroke_choice, "scm", strategy_choice)
-        st.table(build_ui_table(scm_splits))
-
-    with tab3:
-        st.subheader(f"⏱️ 50 Meter Splits Chart ({scm_lcm_distance}m) — {strategy_choice} (*50m Increments Only*)")
-        lcm_splits = generate_course_splits(scm_lcm_distance, lcm_seconds, stroke_choice, "lcm", strategy_choice)
-        st.table(build_ui_table(lcm_splits))
-
-    st.caption("💡 [★] Highlighted markers represent traditional 100-unit stopwatch checkpoints used by coaches on the bulkhead.")
