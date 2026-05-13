@@ -109,4 +109,148 @@ def generate_course_splits(distance, total_seconds, stroke, course_type, strateg
             t_fly = fly_back - 1.5
             t_back = fly_back - t_fly
             t_breast = (breast_free + 1.0) / 2
-            t_free = breast_free - t
+            t_free = breast_free - t_breast
+            splits_data.append({"Label": "25m (Fly)", "Split": t_fly, "Cum": t_fly, "Dist": 25})
+            splits_data.append({"Label": "50m (Back) [★]", "Split": t_back, "Cum": fly_back, "Dist": 25})
+            splits_data.append({"Label": "75m (Breast)", "Split": t_breast, "Cum": fly_back + t_breast, "Dist": 25})
+            splits_data.append({"Label": "100m (Free) [★]", "Split": t_free, "Cum": total_seconds, "Dist": 25})
+
+    # 3. 50-interval based races (All LCM, and distances 200+ for SCY/SCM)
+    else:
+        if stroke != "im":
+            cum_time = 0.0
+            slope = 0.0
+            if strategy == "negative split":
+                slope = -0.25 if distance <= 200 else -0.05
+            elif strategy == "controlled fade":
+                slope = 0.30 if distance <= 200 else 0.08
+                
+            base_50 = (total_seconds + dive_advantage + finish_advantage) / num_intervals
+            mid_point = num_intervals / 2
+            
+            for i in range(num_intervals):
+                curve_factor = (i + 0.5 - mid_point) * slope
+                split_50 = base_50 + curve_factor
+                
+                if i == 0:
+                    split_50 -= dive_advantage
+                elif i == (num_intervals - 1) and finish_advantage > 0:
+                    split_50 -= finish_advantage
+                    
+                cum_time += split_50
+                label = f"{(i + 1) * 50}m"
+                if ((i + 1) * 50) % 100 == 0: label += " [★]"
+                splits_data.append({"Label": label, "Split": split_50, "Cum": cum_time, "Dist": 50})
+                
+            error_adjustment = total_seconds / splits_data[-1]["Cum"]
+            for s in splits_data:
+                s["Split"] *= error_adjustment
+                s["Cum"] *= error_adjustment
+        else:
+            ratios = {"fly": 0.23, "back": 0.25, "breast": 0.28, "free": 0.24}
+            cum_time = 0.0
+            stroke_times = {s: total_seconds * r for s, r in ratios.items()}
+            stroke_times["fly"] -= 3.0
+            stroke_times["free"] -= 0.5
+            for s in stroke_times: stroke_times[s] += 3.5 / 4
+
+            for s in ["fly", "back", "breast", "free"]:
+                if distance == 200:
+                    split_50 = stroke_times[s]
+                    cum_time += split_50
+                    label = f"50m {s.capitalize()[:3]}"
+                    if s in ["back", "free"]: label += " [★]"
+                    splits_data.append({"Label": label, "Split": split_50, "Cum": cum_time, "Dist": 50})
+                else:
+                    half_stroke = stroke_times[s] / 2
+                    s1, s2 = (half_stroke - 1.5, half_stroke + 1.5) if s in ["fly", "breast"] else ((half_stroke + 0.25, half_stroke - 0.25) if s == "free" else (half_stroke, half_stroke))
+                    cum_time += s1
+                    splits_data.append({"Label": f"50m {s.capitalize()[:3]}", "Split": s1, "Cum": cum_time, "Dist": 50})
+                    cum_time += s2
+                    splits_data.append({"Label": f"100m {s.capitalize()[:3]} [★]", "Split": s2, "Cum": cum_time, "Dist": 50})
+
+    return splits_data
+
+# --- STREAMLIT USER INTERFACE ---
+st.set_page_config(page_title="The REAL Swim Split Calculator", layout="wide")
+
+# Updated Title & Subtitle
+st.title("🏊‍♂️ The REAL Swim Split Calculator")
+st.subheader("Stop guessing. Start knowing.")
+
+st.write("""
+Every detail—dives versus pushes, flip turns versus two-hand touches—directly impacts your real-world pacing. 
+You are already investing massive amounts of time and energy into this sport; why leave your breakthrough moments to guesswork? 
+
+No more garbage yardage. Equip yourself with the knowledge you need to improve and go get it done!
+""")
+st.markdown("---")
+
+# User Input Controls Matrix
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    scy_distance = st.selectbox("Select Yard Event (SCY)", [50, 100, 200, 400, 500, 1000, 1650])
+with col2:
+    stroke_choice = st.selectbox("Stroke Type", ["Free", "Back", "Fly", "Breast", "IM"])
+with col3:
+    strategy_choice = st.selectbox("Race Pacing Strategy", ["Constant Velocity", "Negative Split", "Controlled Fade"])
+with col4:
+    goal_time_input = st.text_input("Enter SCY Goal Time (MM:SS.hh or SS.hh)", "5:01.50")
+
+scy_seconds = parse_time(goal_time_input)
+
+if scy_seconds is None:
+    st.error("⚠️ Invalid time format. Use formats like 23.50 or 4:45.00")
+else:
+    # 1. Map Distances Automatically
+    scm_lcm_distance = scy_distance
+    if scy_distance == 500: scm_lcm_distance = 400
+    elif scy_distance == 1000: scm_lcm_distance = 800
+    elif scy_distance == 1650: scm_lcm_distance = 1500
+
+    # 2. Calculate Converted Total Target Times
+    scm_seconds = convert_total_time(scy_seconds, stroke_choice, "scm", scy_distance)
+    lcm_seconds = convert_total_time(scy_seconds, stroke_choice, "lcm", scy_distance)
+
+    # Display Conversion Header Milestone Cards
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Short Course Yards (25yd) Goal", f"{scy_distance}y @ {format_time(scy_seconds)}")
+    c2.metric("Short Course Meters (25m) Target", f"{scm_lcm_distance}m @ {format_time(scm_seconds)}")
+    c3.metric("Long Course Meters (50m) Target", f"{scm_lcm_distance}m @ {format_time(lcm_seconds)}")
+    
+    st.markdown(f"#### 📊 Current Tactical Target: **{strategy_choice}** Profile")
+    st.markdown("---")
+
+    # 3. Create Multi-Course Interactive Tab Containers
+    tab1, tab2, tab3 = st.tabs(["🇺🇸 Short Course Yards (25yd)", "🌍 Short Course Meters (25m)", "🏟️ Long Course Meters (50m)"])
+
+    def build_ui_table(calculated_splits):
+        rows = []
+        for s in calculated_splits:
+            yds_per_sec = s["Dist"] / s["Split"]
+            mph = yds_per_sec * 2.04545 if "y" in s["Label"] else yds_per_sec * 2.23694
+            rows.append({
+                "Interval Mark": s["Label"],
+                "Target Split": format_time(s["Split"]),
+                "Cumulative Clock": format_time(s["Cum"]),
+                "Velocity (mph)": f"{mph:.2f}"
+            })
+        return rows
+
+    with tab1:
+        st.subheader(f"⏱️ 25 Yard Splits Chart ({scy_distance}yd) — {strategy_choice}")
+        scy_splits = generate_course_splits(scy_distance, scy_seconds, stroke_choice, "scy", strategy_choice)
+        for s in scy_splits: s["Label"] = s["Label"].replace("m", "y")
+        st.table(build_ui_table(scy_splits))
+
+    with tab2:
+        st.subheader(f"⏱️ 25 Meter Splits Chart ({scm_lcm_distance}m) — {strategy_choice}")
+        scm_splits = generate_course_splits(scm_lcm_distance, scm_seconds, stroke_choice, "scm", strategy_choice)
+        st.table(build_ui_table(scm_splits))
+
+    with tab3:
+        st.subheader(f"⏱️ 50 Meter Splits Chart ({scm_lcm_distance}m) — {strategy_choice} (*50m Increments Only*)")
+        lcm_splits = generate_course_splits(scm_lcm_distance, lcm_seconds, stroke_choice, "lcm", strategy_choice)
+        st.table(build_ui_table(lcm_splits))
+
+    st.caption("💡 [★] Highlighted markers represent traditional 100-unit stopwatch checkpoints used by coaches on the bulkhead.")
