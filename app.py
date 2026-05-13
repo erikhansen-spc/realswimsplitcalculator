@@ -170,8 +170,8 @@ def generate_course_splits(distance, total_seconds, stroke, course_type, strateg
 # --- STREAMLIT USER INTERFACE ---
 st.set_page_config(page_title="Multi-Course Swim Splits Calculator", layout="wide")
 
-st.title("🏊‍♂️ Erik's Swim Splits Analytics Engine")
-st.write("A professional tactical pacing tool mapping yards to international meter equivalents using precise pool mechanics and chosen race strategies.")
+st.title("🏊‍♂️ REAL Swim Split Calculator")
+st.write("Stop wondering what pace you need to swim to reach your goals in practice and start knowing. Dives vs pushes, hand touches vs foot touches - they all matter and have real life implications for understanding what your race splits mean and how to accurately achieve them in practice. You're already spending so much time and energy in this sport. Why not know exactly how fast you need to swim to achieve your goals and take the guess work out of it? Now there's no excuse. Leave garbage yardage behind forever by equipping yourself with the knowledge you need to improve. Go get it done!.")
 st.markdown("---")
 
 # User Input Controls Matrix
