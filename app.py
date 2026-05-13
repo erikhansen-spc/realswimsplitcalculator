@@ -103,7 +103,7 @@ def format_time(secs):
 st.set_page_config(page_title="Swim Splits Analytics Calculator", layout="centered")
 
 st.title("🏊‍♂️ REAL Swim Split Calculator")
-st.write("Stop wondering and start knowing what pace you need to swim to reach your goals in practice - whether from a dive or a push, with a foot touch or hand touch.")
+st.write("Stop wondering what pace you need to swim to reach your goals in practice and start knowing. Dives vs pushes, hand touches vs foot touches - they all matter and have real life implications for understanding what your race splits mean and how to accurately achieve them in practice. You're already spending so much time and energy in this sport. Why not know exactly how fast you need to swim to achhieve your goals and take the guess work out of it?  Now there's no excuse. Leave garbage yardage behind forever by equipping yourself with the knowledge you need to improve. Go get it done!")
 st.markdown("---")
 
 # User Inputs Block
