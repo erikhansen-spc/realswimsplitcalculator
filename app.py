@@ -177,16 +177,11 @@ def generate_course_splits(distance, total_seconds, stroke, course_type, strateg
 # --- STREAMLIT USER INTERFACE ---
 st.set_page_config(page_title="Multi-Course Swim Splits Calculator", layout="wide")
 
-st.title("🏊‍♂️ Erik's Swim Splits Analytics Engine")
+st.title("The REAL Swim Split Calculator")
 
 # Customized user text addition
 st.write("""
-Stop guessing your targets at practice and start knowing them. Every detail—dives versus pushes, 
-flip turns versus two-hand touches—directly impacts your real-world pacing. You are already investing 
-massive amounts of time and energy into this sport; why leave your breakthrough moments to guesswork? 
-
-No more garbage yardage. Equip yourself with the knowledge you need to improve and go get it done!
-""")
+Stop guessing. Start knowing.
 st.markdown("---")
 
 # User Input Controls Matrix
